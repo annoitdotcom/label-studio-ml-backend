@@ -1,3 +1,7 @@
+```
+label-studio-ml start my_ml_backend --with det_config='/home/lionel/mmocr/configs/textdet/dbnet/dbnet_r18_fpnc_1200e_icdar2015.py' det_ckpt='/home/lionel/label-studio-ml-backend/label_studio_ml/examples/ocr_utils/dbnet_r18_fpnc_sbn_1200e_icdar2015_20210329-ba3ab597.pth'  recog_config='/home/lionel/mmocr/configs/textrecog/tps/crnn_tps_academic_dataset.py' recog_ckpt='/home/lionel/label-studio-ml-backend/label_studio_ml/examples/ocr_utils/crnn_tps_academic_dataset_20210510-d221a905.pth' image_dir='/home/lionel/data_labeling_website/data/media/upload'
+```
+
 ## What is the Label Studio ML backend?
 
 The Label Studio ML backend is an SDK that lets you wrap your machine learning code and turn it into a web server.
