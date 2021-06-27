@@ -1,6 +1,32 @@
 ```
-label-studio-ml start my_ml_backend --with det_config='/home/lionel/mmocr/configs/textdet/dbnet/dbnet_r18_fpnc_1200e_icdar2015.py' det_ckpt='/home/lionel/label-studio-ml-backend/label_studio_ml/examples/ocr_utils/dbnet_r18_fpnc_sbn_1200e_icdar2015_20210329-ba3ab597.pth'  recog_config='/home/lionel/mmocr/configs/textrecog/tps/crnn_tps_academic_dataset.py' recog_ckpt='/home/lionel/label-studio-ml-backend/label_studio_ml/examples/ocr_utils/crnn_tps_academic_dataset_20210510-d221a905.pth' image_dir='/home/lionel/data_labeling_website/data/media/upload'
+conda create -n env37 python=3.7 -y
+conda activate env37
+
+# install latest pytorch prebuilt with the default prebuilt CUDA version (usually the latest)
+conda install pytorch==1.5.0 torchvision==0.6.0 cudatoolkit=10.1 -c pytorch
+
+# install the latest mmcv-full
+pip install mmcv-full==1.3.4
+
+# install mmdetection
+pip install mmdet==2.11.0
+
+# install mmocr
+git clone https://github.com/open-mmlab/mmocr.git
+cd mmocr
+
+pip install -r requirements.txt
+pip install -v -e .  # or "python setup.py develop"
+export PYTHONPATH=$(pwd):$PYTHONPATH
 ```
+
+
+
+
+```
+label-studio-ml start my_ml_backend --with det_config=./mmocr/configs/textdet/dbnet/dbnet_r50dcnv2_fpnc_1200e_icdar2015.py det_ckpt=./data/dbnet_r50dcnv2_fpnc_sbn_1200e_icdar2015_20210325-91cef9af.pth recog_config=./mmocr/configs/textrecog/tps/crnn_tps_academic_dataset.py recog_ckpt=./data/crnn_tps_academic_dataset_20210510-d221a905.pth image_dir='/home/lionel/data_labeling_website/data/media/upload' device='cuda'
+```
+
 
 ## What is the Label Studio ML backend?
 

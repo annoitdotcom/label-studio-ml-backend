@@ -1,0 +1,3 @@
+[submodule "mmocr"]
+	path = mmocr
+	url = https://github.com/open-mmlab/mmocr.git
