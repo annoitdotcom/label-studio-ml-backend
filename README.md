@@ -1,3 +1,5 @@
+## MMOCR
+
 ```
 conda create -n env37 python=3.7 -y
 conda activate env37
@@ -27,6 +29,25 @@ export PYTHONPATH=$(pwd):$PYTHONPATH
 label-studio-ml start my_ml_backend --with det_config=./mmocr/configs/textdet/dbnet/dbnet_r50dcnv2_fpnc_1200e_icdar2015.py det_ckpt=./data/dbnet_r50dcnv2_fpnc_sbn_1200e_icdar2015_20210325-91cef9af.pth recog_config=./mmocr/configs/textrecog/tps/crnn_tps_academic_dataset.py recog_ckpt=./data/crnn_tps_academic_dataset_20210510-d221a905.pth image_dir='/home/lionel/data_labeling_website/data/media/upload' device='cuda'
 ```
 
+## MMDETECTION
+```
+conda create -n open-mmlab python=3.7 -y
+conda activate open-mmlab
+
+# install latest pytorch prebuilt with the default prebuilt CUDA version (usually the latest)
+conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=11.0 -c pytorch
+git clone https://github.com/open-mmlab/mmdetection.git
+cd mmdetection
+pip install -r requirements/build.txt
+pip install "git+https://github.com/open-mmlab/cocoapi.git#subdirectory=pycocotools"
+pip install -v -e .
+
+pip install mmcv-full==1.3.8 -f https://download.openmmlab.com/mmcv/dist/cu110/torch1.7.0/index.html
+
+label-studio-ml init coco-detector --from label_studio_ml/examples/mmdetection/mmdetection.py
+
+label-studio-ml start coco-detector --with config_file=mmdetection/configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py checkpoint_file=./data/faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth image_dir='/home/lionel/data_labeling_website/data/media/upload' device=cuda -p 9091 
+```
 
 ## What is the Label Studio ML backend?
 

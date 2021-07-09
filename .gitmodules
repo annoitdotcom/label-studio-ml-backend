@@ -1,3 +1,6 @@
 [submodule "mmocr"]
 	path = mmocr
 	url = https://github.com/open-mmlab/mmocr.git
+[submodule "mmdetection"]
+	path = mmdetection
+	url = https://github.com/open-mmlab/mmdetection

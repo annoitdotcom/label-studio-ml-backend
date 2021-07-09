@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 data
 my_ml_backend
+coco-detector
