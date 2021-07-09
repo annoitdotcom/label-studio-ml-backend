@@ -130,3 +130,4 @@ dmypy.json
 data
 my_ml_backend
 coco-detector
+mmseg_backend/

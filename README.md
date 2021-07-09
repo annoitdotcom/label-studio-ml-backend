@@ -49,6 +49,13 @@ label-studio-ml init coco-detector --from label_studio_ml/examples/mmdetection/m
 label-studio-ml start coco-detector --with config_file=mmdetection/configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py checkpoint_file=./data/faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth image_dir='/home/lionel/data_labeling_website/data/media/upload' device=cuda -p 9091 
 ```
 
+## MMSEGMENTATION
+```
+label-studio-ml init mmseg_backend --script label_studio_ml/examples/mmsegmentation.py
+
+label-studio-ml start mmseg_backend --with config_file=mmsegmentation/configs/pspnet/pspnet_r50-d8_512x1024_40k_cityscapes.py checkpoint_file=./data/pspnet_r50-d8_512x1024_40k_cityscapes_20200605_003338-2966598c.pth image_dir='/home/lionel/data_labeling_website/data/media/upload' device=cuda -p 9092
+```
+
 ## What is the Label Studio ML backend?
 
 The Label Studio ML backend is an SDK that lets you wrap your machine learning code and turn it into a web server.
