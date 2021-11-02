@@ -1,4 +1,5 @@
 import setuptools
+
 import label_studio_ml
 
 print(label_studio_ml.package_name, label_studio_ml.__version__)

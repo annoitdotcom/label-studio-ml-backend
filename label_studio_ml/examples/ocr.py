@@ -1,24 +1,21 @@
-import os
 import logging
-import boto3
-
-from mmdet.apis import init_detector, inference_detector
-
-from label_studio_ml.model import LabelStudioMLBase
-from label_studio_ml.utils import get_image_local_path, get_image_size, get_single_tag_keys
-from label_studio.core.utils.io import json_load, get_data_dir
-from label_studio.core.settings.base import DATA_UNDEFINED_NAME
-from botocore.exceptions import ClientError
+import os
 from urllib.parse import urlparse
 
+import boto3
 import mmcv
-from mmdet.apis import init_detector
+from botocore.exceptions import ClientError
+from label_studio.core.settings.base import DATA_UNDEFINED_NAME
+from label_studio.core.utils.io import get_data_dir, json_load
+from mmdet.apis import inference_detector, init_detector
 
+from label_studio_ml.model import LabelStudioMLBase
+from label_studio_ml.utils import (get_image_local_path, get_image_size,
+                                   get_single_tag_keys)
 from mmocr.apis.inference import model_inference
 from mmocr.core.visualize import det_recog_show_result
 from mmocr.datasets.pipelines.crop import crop_img
 from mmocr.utils.box_util import stitch_boxes_into_lines
-
 
 logger = logging.getLogger(__name__)
 

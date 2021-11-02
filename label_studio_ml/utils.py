@@ -1,22 +1,21 @@
+import hashlib
 import importlib
 import importlib.util
 import inspect
+import io
+import logging
 import os
 import sys
 import urllib
-import hashlib
-import requests
-import logging
-import io
-
 from urllib.parse import urlparse
-from PIL import Image
-from colorama import Fore
 
-from .model import LabelStudioMLBase
+import requests
+from colorama import Fore
 from label_studio.core.utils.io import get_cache_dir, get_data_dir
 from label_studio.core.utils.params import get_env
+from PIL import Image
 
+from .model import LabelStudioMLBase
 
 logger = logging.getLogger(__name__)
 

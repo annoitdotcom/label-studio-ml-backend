@@ -1,13 +1,13 @@
-import pickle
 import os
-import numpy as np
+import pickle
 
-from sklearn.linear_model import LogisticRegression
+import numpy as np
+from label_studio.core.settings.base import DATA_UNDEFINED_NAME
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 
 from label_studio_ml.model import LabelStudioMLBase
-from label_studio.core.settings.base import DATA_UNDEFINED_NAME
 
 
 class SimpleTextClassifier(LabelStudioMLBase):

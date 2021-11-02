@@ -1,21 +1,21 @@
-import os
-import logging
-import time
-import json
-import redis
-import attr
 import io
-
+import json
+import logging
+import os
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from itertools import tee
-from redis import Redis
-from rq import Queue, get_current_job
-from rq.registry import StartedJobRegistry, FinishedJobRegistry, FailedJobRegistry
-from rq.job import Job
 
+import attr
+import redis
 from label_studio.core.label_config import parse_config
 from label_studio.core.utils.params import get_bool_env
+from redis import Redis
+from rq import Queue, get_current_job
+from rq.job import Job
+from rq.registry import (FailedJobRegistry, FinishedJobRegistry,
+                         StartedJobRegistry)
 
 logger = logging.getLogger(__name__)
 

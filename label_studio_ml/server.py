@@ -1,13 +1,13 @@
-import os
-import logging
 import argparse
+import logging
+import os
 import shutil
-import colorama
 
+import colorama
 from colorama import Fore
 from label_studio.core.utils.io import find_dir
-from .utils import get_all_classes_inherited_LabelStudioMLBase
 
+from .utils import get_all_classes_inherited_LabelStudioMLBase
 
 colorama.init()
 logger = logging.getLogger(__name__)

@@ -4,3 +4,6 @@
 [submodule "mmdetection"]
 	path = mmdetection
 	url = https://github.com/open-mmlab/mmdetection
+[submodule "mmsegmentation"]
+	path = mmsegmentation
+	url = https://github.com/open-mmlab/mmsegmentation.git

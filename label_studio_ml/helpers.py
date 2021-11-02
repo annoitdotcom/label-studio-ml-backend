@@ -1,4 +1,5 @@
 from abc import abstractmethod
+
 from label_studio.ml import LabelStudioMLBase
 
 

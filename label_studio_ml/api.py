@@ -1,10 +1,10 @@
 import logging
 
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, jsonify, request, send_file
 from rq.exceptions import NoSuchJobError
 
-from .model import LabelStudioMLManager
 from .exceptions import exception_handler
+from .model import LabelStudioMLManager
 
 logger = logging.getLogger(__name__)
 
