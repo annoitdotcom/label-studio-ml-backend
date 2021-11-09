@@ -156,7 +156,7 @@ class MMSegmentation(LabelStudioMLBase):
                             split=split, **kwargs)
             assert os.path.exists(self.img_dir) and self.split is not None
     
-    def get_training_cfg(self, config_file: str = None, image_dir: str = None, ann_dir: str = None) -> Config:
+    def get_training_cfg(self, config_file: str = None, image_dir: str = None, ann_dir: str = None):
         cfg = Config.fromfile(config_file)
 
         # Since we use ony one GPU, BN is used instead of SyncBN

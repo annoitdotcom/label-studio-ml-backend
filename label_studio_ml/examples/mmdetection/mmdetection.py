@@ -237,7 +237,7 @@ class MMDetection(LabelStudioMLBase):
         logger.debug(f'Config:\n{cfg.pretty_text}')
         return cfg
 
-    def get_training_cfg(self, ann_file, num_classes) -> Config:
+    def get_training_cfg(self, ann_file, num_classes):
         cfg = Config.fromfile(self.config_file)
 
         # Modify dataset type and path
