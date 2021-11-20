@@ -19,13 +19,15 @@ class NemoASR(LabelStudioMLBase):
         self.from_name, self.to_name, self.value = self._bind_to_textarea()
 
         # This line will download pre-trained QuartzNet15x5 model from NVIDIA's NGC cloud and instantiate it for you
-        self.model = nemo_asr.models.EncDecCTCModel.from_pretrained(model_name=model_name)
+        self.model = nemo_asr.models.EncDecCTCModel.from_pretrained(
+            model_name=model_name)
 
     def predict(self, tasks, **kwargs):
         output = []
         audio_paths = []
         for task in tasks:
-            audio_url = task['data'].get(self.value) or task['data'].get(DATA_UNDEFINED_NAME)
+            audio_url = task['data'].get(
+                self.value) or task['data'].get(DATA_UNDEFINED_NAME)
             audio_path = self.get_local_path(audio_url)
             audio_paths.append(audio_path)
 
@@ -62,7 +64,8 @@ class NemoASR(LabelStudioMLBase):
                 to_name = tag_info['to_name'][0]
                 value = tag_info['inputs'][0]['value']
         if from_name is None:
-            raise ValueError('ASR model expects <TextArea> tag to be presented in a label config.')
+            raise ValueError(
+                'ASR model expects <TextArea> tag to be presented in a label config.')
         return from_name, to_name, value
 
     def fit(self, completions, workdir=None, **kwargs):
@@ -70,5 +73,6 @@ class NemoASR(LabelStudioMLBase):
         if os.path.exists(project_path):
             logger.info('Found project in local path ' + project_path)
         else:
-            logger.error('Project not found in local path ' + project_path + '. Serving uploaded data will fail.')
+            logger.error('Project not found in local path ' +
+                         project_path + '. Serving uploaded data will fail.')
         return {'project_path': project_path}

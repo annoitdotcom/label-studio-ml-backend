@@ -18,14 +18,17 @@ class DialoGPTSimpleGenerator(LabelStudioMLBase):
             self.parsed_label_config, 'TextArea', 'Paragraphs')
         config = etree.fromstring(self.label_config)
         paragraphs = config.find('.//Paragraphs')
-        self.name_key = paragraphs.get('nameKey') or paragraphs.get('namekey') or 'author'
-        self.text_key = paragraphs.get('textKey') or paragraphs.get('textkey') or 'text'
+        self.name_key = paragraphs.get(
+            'nameKey') or paragraphs.get('namekey') or 'author'
+        self.text_key = paragraphs.get(
+            'textKey') or paragraphs.get('textkey') or 'text'
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.model = AutoModelForCausalLM.from_pretrained(self.model_name)
 
     def _run_generator(self, texts):
-        entire_dialog = self.tokenizer.eos_token.join(texts) + self.tokenizer.eos_token
+        entire_dialog = self.tokenizer.eos_token.join(
+            texts) + self.tokenizer.eos_token
 
         input_ids = self.tokenizer.encode(entire_dialog, return_tensors='pt')
 
@@ -40,7 +43,8 @@ class DialoGPTSimpleGenerator(LabelStudioMLBase):
         responses = []
         for i in range(self.num_return_sequences):
             response_ids = chat_history_ids[:, input_ids.shape[-1]:][i]
-            response = self.tokenizer.decode(response_ids, skip_special_tokens=True)
+            response = self.tokenizer.decode(
+                response_ids, skip_special_tokens=True)
             if response:
                 responses.append(response)
         return responses

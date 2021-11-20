@@ -28,7 +28,8 @@ def _predict():
     force_reload = data.get('force_reload', False)
     try_fetch = data.get('try_fetch', True)
     params = data.get('params') or {}
-    predictions, model = _manager.predict(tasks, project, label_config, force_reload, try_fetch, **params)
+    predictions, model = _manager.predict(
+        tasks, project, label_config, force_reload, try_fetch, **params)
     response = {
         'results': predictions,
         'model_version': model.model_version
@@ -44,9 +45,12 @@ def _setup():
     project = data.get('project')
     schema = data.get('schema')
     force_reload = data.get('force_reload', False)
-    hostname = data.get('hostname', '')  # host name for uploaded files and building urls
-    access_token = data.get('access_token', '')  # user access token to retrieve data
-    model = _manager.fetch(project, schema, force_reload, hostname=hostname, access_token=access_token)
+    # host name for uploaded files and building urls
+    hostname = data.get('hostname', '')
+    # user access token to retrieve data
+    access_token = data.get('access_token', '')
+    model = _manager.fetch(project, schema, force_reload,
+                           hostname=hostname, access_token=access_token)
     logger.debug('Fetch model version: {}'.format(model.model_version))
     return jsonify({'model_version': model.model_version})
 

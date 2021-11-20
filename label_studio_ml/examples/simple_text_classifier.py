@@ -37,7 +37,8 @@ class SimpleTextClassifier(LabelStudioMLBase):
             # make some dummy initialization
             self.model.fit(X=self.labels, y=list(range(len(self.labels))))
             print('Initialized with from_name={from_name}, to_name={to_name}, labels={labels}'.format(
-                from_name=self.from_name, to_name=self.to_name, labels=str(self.labels)
+                from_name=self.from_name, to_name=self.to_name, labels=str(
+                    self.labels)
             ))
         else:
             # otherwise load the model from the latest training results
@@ -47,23 +48,27 @@ class SimpleTextClassifier(LabelStudioMLBase):
             # and use the labels from training outputs
             self.labels = self.train_output['labels']
             print('Loaded from train output with from_name={from_name}, to_name={to_name}, labels={labels}'.format(
-                from_name=self.from_name, to_name=self.to_name, labels=str(self.labels)
+                from_name=self.from_name, to_name=self.to_name, labels=str(
+                    self.labels)
             ))
 
     def reset_model(self):
-        self.model = make_pipeline(TfidfVectorizer(ngram_range=(1, 3)), LogisticRegression(C=10, verbose=True))
+        self.model = make_pipeline(TfidfVectorizer(
+            ngram_range=(1, 3)), LogisticRegression(C=10, verbose=True))
 
     def predict(self, tasks, **kwargs):
         # collect input texts
         input_texts = []
         for task in tasks:
-            input_text = task['data'].get(self.value) or task['data'].get(DATA_UNDEFINED_NAME)
+            input_text = task['data'].get(
+                self.value) or task['data'].get(DATA_UNDEFINED_NAME)
             input_texts.append(input_text)
 
         # get model predictions
         probabilities = self.model.predict_proba(input_texts)
         predicted_label_indices = np.argmax(probabilities, axis=1)
-        predicted_scores = probabilities[np.arange(len(predicted_label_indices)), predicted_label_indices]
+        predicted_scores = probabilities[np.arange(
+            len(predicted_label_indices)), predicted_label_indices]
         predictions = []
         for idx, score in zip(predicted_label_indices, predicted_scores):
             predicted_label = self.labels[idx]
@@ -91,7 +96,8 @@ class SimpleTextClassifier(LabelStudioMLBase):
             if completion['annotations'][0].get('skipped') or completion['annotations'][0].get('was_cancelled'):
                 continue
 
-            input_text = completion['data'].get(self.value) or completion['data'].get(DATA_UNDEFINED_NAME)
+            input_text = completion['data'].get(
+                self.value) or completion['data'].get(DATA_UNDEFINED_NAME)
             input_texts.append(input_text)
 
             # get an annotation

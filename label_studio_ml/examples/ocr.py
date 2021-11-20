@@ -8,14 +8,14 @@ from botocore.exceptions import ClientError
 from label_studio.core.settings.base import DATA_UNDEFINED_NAME
 from label_studio.core.utils.io import get_data_dir, json_load
 from mmdet.apis import inference_detector, init_detector
-
-from label_studio_ml.model import LabelStudioMLBase
-from label_studio_ml.utils import (get_image_local_path, get_image_size,
-                                   get_single_tag_keys)
 from mmocr.apis.inference import model_inference
 from mmocr.core.visualize import det_recog_show_result
 from mmocr.datasets.pipelines.crop import crop_img
 from mmocr.utils.box_util import stitch_boxes_into_lines
+
+from label_studio_ml.model import LabelStudioMLBase
+from label_studio_ml.utils import (get_image_local_path, get_image_size,
+                                   get_single_tag_keys)
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,8 @@ class MMOCR(LabelStudioMLBase):
         # default Label Studio image upload folder
         upload_dir = os.path.join(get_data_dir(), "media", "upload")
         self.image_dir = image_dir or upload_dir
-        logger.debug(f"{self.__class__.__name__} reads images from {self.image_dir}")
+        logger.debug(
+            f"{self.__class__.__name__} reads images from {self.image_dir}")
         print("Load new model")
         self.device = device
         # build detect model
@@ -121,7 +122,8 @@ class MMOCR(LabelStudioMLBase):
                 self.recog_model.cfg.data.test["datasets"][0].pipeline
 
     def _get_image_url(self, task):
-        image_url = task["data"].get("ocr") or task["data"].get(DATA_UNDEFINED_NAME)
+        image_url = task["data"].get(
+            "ocr") or task["data"].get(DATA_UNDEFINED_NAME)
         if image_url.startswith("s3://"):
             # presign s3 url
             r = urlparse(image_url, allow_fragments=False)
@@ -134,7 +136,8 @@ class MMOCR(LabelStudioMLBase):
                     Params={"Bucket": bucket_name, "Key": key}
                 )
             except ClientError as exc:
-                logger.warning(f"Can\"t generate presigned URL for {image_url}. Reason: {exc}")
+                logger.warning(
+                    f"Can\"t generate presigned URL for {image_url}. Reason: {exc}")
         return image_url
 
     def predict(self, tasks, **kwargs):
@@ -153,53 +156,54 @@ class MMOCR(LabelStudioMLBase):
 
             bbox = list(bbox)
 
-            x, y, xmax, ymax = min(bbox[::2]), min(bbox[1::2]), max(bbox[::2]), max(bbox[1::2])
+            x, y, xmax, ymax = min(bbox[::2]), min(
+                bbox[1::2]), max(bbox[::2]), max(bbox[1::2])
             results += [
-            {
-                "id": cell_id,
-                "type": "rectanglelabels",
-                "value": {
-                "x": x / img_width * 100,
-                "y": y / img_height * 100,
-                "width": (xmax - x) / img_width * 100,
-                "height": (ymax - y) / img_height * 100,
-                "rotation": 0,
-                "rectanglelabels": [
-                    "Rectangle"
-                ]
+                {
+                    "id": cell_id,
+                    "type": "rectanglelabels",
+                    "value": {
+                        "x": x / img_width * 100,
+                        "y": y / img_height * 100,
+                        "width": (xmax - x) / img_width * 100,
+                        "height": (ymax - y) / img_height * 100,
+                        "rotation": 0,
+                        "rectanglelabels": [
+                            "Rectangle"
+                        ]
+                    },
+                    "to_name": "image",
+                    "from_name": "label",
+                    "image_rotation": 0,
+                    "original_width": 1121,
+                    "original_height": 459
                 },
-                "to_name": "image",
-                "from_name": "label",
-                "image_rotation": 0,
-                "original_width": 1121,
-                "original_height": 459
-            },
-            {
-                "id": cell_id,
-                "type": "textarea",
-                "value": {
-                "x": x / img_width * 100,
-                "y": y / img_height * 100,
-                "width": (xmax - x) / img_width * 100,
-                "height": (ymax - y) / img_height * 100,
-                "text": [
-                    text
-                ],
-                "rotation": 0
-                },
-                "to_name": "image",
-                "from_name": "transcription",
-                "image_rotation": 0,
-                "original_width": 1121,
-                "original_height": 459
-            }
+                {
+                    "id": cell_id,
+                    "type": "textarea",
+                    "value": {
+                        "x": x / img_width * 100,
+                        "y": y / img_height * 100,
+                        "width": (xmax - x) / img_width * 100,
+                        "height": (ymax - y) / img_height * 100,
+                        "text": [
+                            text
+                        ],
+                        "rotation": 0
+                    },
+                    "to_name": "image",
+                    "from_name": "transcription",
+                    "image_rotation": 0,
+                    "original_width": 1121,
+                    "original_height": 459
+                }
             ]
         # import pdb; pdb.set_trace()
         print(
             [{
-            "result": results,
-            "score": 0
-        }]
+                "result": results,
+                "score": 0
+            }]
         )
         predictions = [{"result": results, "score": 0}]
         return predictions

@@ -7,7 +7,7 @@ class DummyModel(LabelStudioMLBase):
 
     def __init__(self, **kwargs):
         super(DummyModel, self).__init__(**kwargs)
-        
+
         # pre-initialize your variables here
         from_name, schema = list(self.parsed_label_config.items())[0]
         self.from_name = from_name
@@ -17,7 +17,7 @@ class DummyModel(LabelStudioMLBase):
     def predict(self, tasks, **kwargs):
         """ This is where inference happens: 
             model returns the list of predictions based on input list of tasks
-            
+
             :param tasks: Label Studio tasks in JSON format
         """
         results = []

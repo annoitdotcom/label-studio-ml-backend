@@ -47,7 +47,8 @@ class TFMobileNet(LabelStudioMLBase):
     def predict(self, tasks, **kwargs):
         image_path = get_image_local_path(tasks[0]['data'][self.value])
 
-        image = Image.open(image_path).resize((self.image_width, self.image_height))
+        image = Image.open(image_path).resize(
+            (self.image_width, self.image_height))
         image = np.array(image) / 255.0
         result = self.model.predict(image[np.newaxis, ...])
         predicted_label_idx = np.argmax(result[0], axis=-1)
@@ -84,11 +85,13 @@ class TFMobileNet(LabelStudioMLBase):
             return img, label
 
         ds = ds.map(prepare_item, num_parallel_calls=tf.data.AUTOTUNE)
-        ds = ds.cache().shuffle(buffer_size=1000).batch(self.batch_size).prefetch(buffer_size=tf.data.AUTOTUNE)
+        ds = ds.cache().shuffle(buffer_size=1000).batch(
+            self.batch_size).prefetch(buffer_size=tf.data.AUTOTUNE)
 
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(),
-            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(
+                from_logits=True),
             metrics=['acc'])
         self.model.fit(ds, epochs=self.epochs)
         model_file = os.path.join(workdir, 'checkpoint')

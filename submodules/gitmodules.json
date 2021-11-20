@@ -1,0 +1,11 @@
+{
+    "submodule_mmocr": {
+        "url": "https://github.com/open-mmlab/mmocr.git"
+    },
+    "submodule_mmdetection": {
+        "url": "https://github.com/open-mmlab/mmdetection"
+    },
+    "submodule_mmsegmentation": {
+        "url": "https://github.com/open-mmlab/mmsegmentation.git"
+    }
+}

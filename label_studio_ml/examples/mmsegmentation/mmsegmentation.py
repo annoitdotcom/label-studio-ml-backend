@@ -33,6 +33,14 @@ image_cache_dir = os.path.join(os.path.dirname(__file__), 'image-cache')
 os.makedirs(image_cache_dir, exist_ok=True)
 
 
+@DATASETS.register_module()
+class SegmentationDataset(CustomDataset):
+    def __init__(self, split, **kwargs):
+        super().__init__(img_suffix='.jpg', seg_map_suffix='.png',
+                         split=split, **kwargs)
+        assert os.path.exists(self.img_dir) and self.split is not None
+
+
 class MMSegmentation(LabelStudioMLBase):
     """Object detector based on https://github.com/open-mmlab/mmdetection"""
 
@@ -61,7 +69,8 @@ class MMSegmentation(LabelStudioMLBase):
         self.ann_dir = ann_dir
         upload_dir = os.path.join(get_data_dir(), 'media', 'upload')
         self.image_dir = image_dir or upload_dir
-        logger.debug(f'{self.__class__.__name__} reads images from {self.image_dir}')
+        logger.debug(
+            f'{self.__class__.__name__} reads images from {self.image_dir}')
         if self.labels_file and os.path.exists(self.labels_file):
             self.label_map = json_load(self.labels_file)
         else:
@@ -79,26 +88,31 @@ class MMSegmentation(LabelStudioMLBase):
                 for predicted_value in label_attrs.get('predicted_values', '').split(','):
                     self.label_map[predicted_value] = label_name
 
-        logger.debug('Load new model from: ', self.config_file, self.checkpoint_file)
+        logger.debug('Load new model from: ',
+                     self.config_file, self.checkpoint_file)
         if not self.train_output:
             # This is an array of <Choice> labels
             self.labels = self.info['labels']
 
             # If there is no trainings, load default model.
-            logger.debug(f'Initialized with config file={self.config_file}, checkpoint_file={self.checkpoint_file}')
+            logger.debug(
+                f'Initialized with config file={self.config_file}, checkpoint_file={self.checkpoint_file}')
         else:
             # Otherwise load the model from the latest training results.
             self.checkpoint_file = self.train_output['checkpoint_file']
             self.config_file = self.train_output['config_file']
-        
+
             # and use the labels from training outputs
             self.labels = self.train_output['labels']
-            logger.debug(f'Loaded from train output with config file={self.config_file}, checkpoint file={checkpoint_file}')
-        self.model = init_segmentor(self.config_file, checkpoint_file, device=device)
+            logger.debug(
+                f'Loaded from train output with config file={self.config_file}, checkpoint file={checkpoint_file}')
+        self.model = init_segmentor(
+            self.config_file, checkpoint_file, device=device)
         self.cfg = self.get_training_cfg(self.config_file)
 
     def _get_image_url(self, task):
-        image_url = task['data'].get(self.value) or task['data'].get(DATA_UNDEFINED_NAME)
+        image_url = task['data'].get(
+            self.value) or task['data'].get(DATA_UNDEFINED_NAME)
         if image_url.startswith('s3://'):
             # presign s3 url
             rr = urlparse(image_url, allow_fragments=False)
@@ -111,7 +125,8 @@ class MMSegmentation(LabelStudioMLBase):
                     Params={'Bucket': bucket_name, 'Key': key}
                 )
             except ClientError as exc:
-                logger.warning(f'Can\'t generate presigned URL for {image_url}. Reason: {exc}')
+                logger.warning(
+                    f'Can\'t generate presigned URL for {image_url}. Reason: {exc}')
         return image_url
 
     def predict(self, tasks, **kwargs):
@@ -129,7 +144,8 @@ class MMSegmentation(LabelStudioMLBase):
             points_list = Mask(model_results[0] == (idx + 1)).polygons().points
             output_label = self.label_map.get(cc, cc)
             if output_label not in self.labels_in_config:
-                logger.error(output_label + ' label not found in project config.')
+                logger.error(output_label +
+                             ' label not found in project config.')
                 continue
             for points in points_list:
                 points[:, 0] = points[:, 0] / img_width * 100
@@ -149,13 +165,6 @@ class MMSegmentation(LabelStudioMLBase):
             'score': 0
         }]
 
-    @DATASETS.register_module()
-    class SegmentationDataset(CustomDataset):
-        def __init__(self, split, **kwargs):
-            super().__init__(img_suffix='.jpg', seg_map_suffix='.png', 
-                            split=split, **kwargs)
-            assert os.path.exists(self.img_dir) and self.split is not None
-    
     def get_training_cfg(self, config_file: str = None, image_dir: str = None, ann_dir: str = None):
         cfg = Config.fromfile(config_file)
 
@@ -165,8 +174,8 @@ class MMSegmentation(LabelStudioMLBase):
         cfg.model.decode_head.norm_cfg = cfg.norm_cfg
         cfg.model.auxiliary_head.norm_cfg = cfg.norm_cfg
         # modify num classes of the model in decode/auxiliary head
-        cfg.model.decode_head.num_classes=8
-        cfg.model.auxiliary_head.num_classes=8
+        cfg.model.decode_head.num_classes = 8
+        cfg.model.auxiliary_head.num_classes = 8
 
         # Modify dataset type and path
         cfg.dataset_type = 'SegmentationDataset'
@@ -221,33 +230,38 @@ class MMSegmentation(LabelStudioMLBase):
                 continue
 
             image_url = self._get_image_url(completion['data'][self.value])
-            image_path = get_image_local_path(image_url, image_dir=self.image_dir)
+            image_path = get_image_local_path(
+                image_url, image_dir=self.image_dir)
             ann_url = get_choice(completion)
             ann_path = get_image_local_path(ann_url, image_dir=self.ann_dir)
             annotations.append((image_path, ann_path))
 
         # Create datasets.
         image_paths, ann_paths = zip(*annotations)
-        palette = (tuple(np.random.choice(range(256), size=3)) for _ in range(len(self.labels)))
+        palette = (tuple(np.random.choice(range(256), size=3))
+                   for _ in range(len(self.labels)))
         CustomDataset.CLASSES = self.labels
         CustomDataset.PALETTE = palette
 
         # Get training config.
-        cfg = self.get_training_cfg(self.config_file, self.image_dir, self.ann_dir)
+        cfg = self.get_training_cfg(
+            self.config_file, self.image_dir, self.ann_dir)
         cfg.workdir = workdir
 
         # Build the datasets.
         datasets = [build_dataset(cfg.data.train)]
 
         # Build the detector.
-        model = build_segmentor(self.model, train_cfg=self.cfg.get('train_cfg'))
+        model = build_segmentor(
+            self.model, train_cfg=self.cfg.get('train_cfg'))
 
         # Add an attribute for visualization convenience.
         model.CLASSES = datasets[0].CLASSES
 
         # Create work_dir.
         mmcv.mkdir_or_exist(os.path.abspath(self.cfg.work_dir))
-        train_segmentor(model, datasets, self.cfg, distributed=False, validate=False, meta=dict())
+        train_segmentor(model, datasets, self.cfg,
+                        distributed=False, validate=False, meta=dict())
         train_output = {
             'checkpoint_file': os.path.join(self.cfg.work_dir, 'latest.pth'),
             'config_file': os.path.join(self.cfg.work_dir, os.path.basename(self.config_file))

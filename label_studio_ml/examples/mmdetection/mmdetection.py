@@ -25,6 +25,54 @@ from label_studio_ml.utils import (get_choice, get_image_local_path,
 logger = logging.getLogger(__name__)
 
 
+@DATASETS.register_module()
+class DetectionDataset(CustomDataset):
+    def load_annotations(self, ann_file, label_dir: str = None, img_suffix=".jpg"):
+        cat2label = {k: i for i, k in enumerate(self.CLASSES)}
+        # Load image list from file.
+        image_list = mmcv.list_from_file(ann_file)
+        data_infos = []
+        # Convert annotations to middle format.
+        for image_id in image_list:
+            filename = f'{self.img_prefix}/{image_id}{img_suffix}'
+            image = mmcv.imread(filename)
+            height, width = image.shape[:2]
+            data_info = dict(
+                filename=f'{image_id}{img_suffix}', width=width, height=height)
+
+            # Load annotations
+            lines = mmcv.list_from_file(osp.join(label_dir, f'{image_id}.txt'))
+            content = [line.strip().split(' ') for line in lines]
+            bbox_names = [x[0] for x in content]
+            bboxes = [[float(info) for info in x[4:8]] for x in content]
+
+            gt_bboxes = []
+            gt_labels = []
+            gt_bboxes_ignore = []
+            gt_labels_ignore = []
+
+            # filter 'DontCare'
+            for bbox_name, bbox in zip(bbox_names, bboxes):
+                if bbox_name in cat2label:
+                    gt_labels.append(cat2label[bbox_name])
+                    gt_bboxes.append(bbox)
+                else:
+                    gt_labels_ignore.append(-1)
+                    gt_bboxes_ignore.append(bbox)
+
+            data_anno = dict(
+                bboxes=np.array(gt_bboxes, dtype=np.float32).reshape(-1, 4),
+                labels=np.array(gt_labels, dtype=np.long),
+                bboxes_ignore=np.array(gt_bboxes_ignore,
+                                       dtype=np.float32).reshape(-1, 4),
+                labels_ignore=np.array(gt_labels_ignore, dtype=np.long))
+
+            data_info.update(ann=data_anno)
+            data_infos.append(data_info)
+
+        return data_infos
+
+
 class MMDetection(LabelStudioMLBase):
     """Object detector based on https://github.com/open-mmlab/mmdetection"""
 
@@ -50,7 +98,8 @@ class MMDetection(LabelStudioMLBase):
         # default Label Studio image upload folder
         upload_dir = os.path.join(get_data_dir(), 'media', 'upload')
         self.image_dir = image_dir or upload_dir
-        logger.debug(f'{self.__class__.__name__} reads images from {self.image_dir}')
+        logger.debug(
+            f'{self.__class__.__name__} reads images from {self.image_dir}')
         if self.labels_file and os.path.exists(self.labels_file):
             self.label_map = json_load(self.labels_file)
         else:
@@ -73,7 +122,8 @@ class MMDetection(LabelStudioMLBase):
         self.score_thresh = score_threshold
 
     def _get_image_url(self, task):
-        image_url = task['data'].get(self.value) or task['data'].get(DATA_UNDEFINED_NAME)
+        image_url = task['data'].get(
+            self.value) or task['data'].get(DATA_UNDEFINED_NAME)
         if image_url.startswith('s3://'):
             # presign s3 url
             r = urlparse(image_url, allow_fragments=False)
@@ -86,7 +136,8 @@ class MMDetection(LabelStudioMLBase):
                     Params={'Bucket': bucket_name, 'Key': key}
                 )
             except ClientError as exc:
-                logger.warning(f'Can\'t generate presigned URL for {image_url}. Reason: {exc}')
+                logger.warning(
+                    f'Can\'t generate presigned URL for {image_url}. Reason: {exc}')
         return image_url
 
     def predict(self, tasks, **kwargs):
@@ -131,111 +182,6 @@ class MMDetection(LabelStudioMLBase):
             'result': results,
             'score': avg_score
         }]
-
-    @DATASETS.register_module()
-    class DetectionDataset(CustomDataset):
-        def load_annotations(self, ann_file, label_dir: str = None, img_suffix=".jpg"):
-            cat2label = {k: i for i, k in enumerate(self.CLASSES)}
-            # load image list from file
-            image_list = mmcv.list_from_file(self.ann_file)
-        
-            data_infos = []
-            # convert annotations to middle format
-            for image_id in image_list:
-                filename = f'{self.img_prefix}/{image_id}{img_suffix}'
-                image = mmcv.imread(filename)
-                height, width = image.shape[:2]
-                data_info = dict(filename=f'{image_id}{img_suffix}', width=width, height=height)
-        
-                # load annotations
-                lines = mmcv.list_from_file(osp.join(label_dir, f'{image_id}.txt'))
-                content = [line.strip().split(' ') for line in lines]
-                bbox_names = [x[0] for x in content]
-                bboxes = [[float(info) for info in x[4:8]] for x in content]
-        
-                gt_bboxes = []
-                gt_labels = []
-                gt_bboxes_ignore = []
-                gt_labels_ignore = []
-        
-                # filter 'DontCare'
-                for bbox_name, bbox in zip(bbox_names, bboxes):
-                    if bbox_name in cat2label:
-                        gt_labels.append(cat2label[bbox_name])
-                        gt_bboxes.append(bbox)
-                    else:
-                        gt_labels_ignore.append(-1)
-                        gt_bboxes_ignore.append(bbox)
-
-                data_anno = dict(
-                    bboxes=np.array(gt_bboxes, dtype=np.float32).reshape(-1, 4),
-                    labels=np.array(gt_labels, dtype=np.long),
-                    bboxes_ignore=np.array(gt_bboxes_ignore,
-                                        dtype=np.float32).reshape(-1, 4),
-                    labels_ignore=np.array(gt_labels_ignore, dtype=np.long))
-
-                data_info.update(ann=data_anno)
-                data_infos.append(data_info)
-
-            return data_infos
-
-        def get_training_cfg(self, config_file: str = None, image_dir: str = None, ann_dir: str = None) -> Config:
-        cfg = Config.fromfile(config_file)
-
-        # Since we use ony one GPU, BN is used instead of SyncBN
-        cfg.norm_cfg = dict(type='BN', requires_grad=True)
-        cfg.model.backbone.norm_cfg = cfg.norm_cfg
-        cfg.model.decode_head.norm_cfg = cfg.norm_cfg
-        cfg.model.auxiliary_head.norm_cfg = cfg.norm_cfg
-        # modify num classes of the model in decode/auxiliary head
-        cfg.model.decode_head.num_classes=8
-        cfg.model.auxiliary_head.num_classes=8
-
-        # Modify dataset type and path
-        cfg.dataset_type = 'SegmentationDataset'
-        cfg.data.samples_per_gpu = 4
-        cfg.data.workers_per_gpu = 4
-        cfg.img_norm_cfg = dict(
-            mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
-        cfg.crop_size = (256, 256)
-        cfg.train_pipeline = [
-            dict(type='LoadImageFromFile'),
-            dict(type='LoadAnnotations'),
-            dict(type='Resize', img_scale=(320, 240), ratio_range=(0.5, 2.0)),
-            dict(type='RandomCrop', crop_size=cfg.crop_size, cat_max_ratio=0.75),
-            dict(type='RandomFlip', flip_ratio=0.5),
-            dict(type='PhotoMetricDistortion'),
-            dict(type='Normalize', **cfg.img_norm_cfg),
-            dict(type='Pad', size=cfg.crop_size, pad_val=0, seg_pad_val=255),
-            dict(type='DefaultFormatBundle'),
-            dict(type='Collect', keys=['img', 'gt_semantic_seg']),
-        ]
-
-        cfg.data.train.type = cfg.dataset_type
-        cfg.data.train.img_dir = image_dir
-        cfg.data.train.ann_dir = ann_dir
-        cfg.data.train.pipeline = cfg.train_pipeline
-
-        # We can still use the pre-trained Mask RCNN model though we do not need to
-        # use the mask branch
-        cfg.load_from = self.checkpoint_file
-
-        # Set up working dir to save files and logs.
-        cfg.work_dir = None
-
-        cfg.runner.max_iters = 1000
-        cfg.log_config.interval = 10
-        cfg.evaluation.interval = 200
-        cfg.checkpoint_config.interval = 200
-
-        # Set seed to facitate reproducing the result.
-        cfg.seed = 0
-        set_random_seed(0, deterministic=False)
-        cfg.gpu_ids = range(1)
-
-        # Let's have a look at the final config used for training.
-        logger.debug(f'Config:\n{cfg.pretty_text}')
-        return cfg
 
     def get_training_cfg(self, ann_file, num_classes):
         cfg = Config.fromfile(self.config_file)
@@ -284,7 +230,8 @@ class MMDetection(LabelStudioMLBase):
                 continue
 
             image_url = self._get_image_url(completion['data'][self.value])
-            image_path = get_image_local_path(image_url, image_dir=self.image_dir)
+            image_path = get_image_local_path(
+                image_url, image_dir=self.image_dir)
             ann_url = get_choice(completion)
             ann_path = get_image_local_path(ann_url, image_dir=self.ann_dir)
             annotations.append((image_path, ann_path))
@@ -294,7 +241,8 @@ class MMDetection(LabelStudioMLBase):
         CustomDataset.CLASSES = self.labels
 
         # Get training config.
-        cfg = self.get_training_cfg(self.labels_file, len(self.labels))  # TODO: set ann file here.
+        # TODO: set ann file here.
+        cfg = self.get_training_cfg(self.labels_file, len(self.labels))
         cfg.workdir = workdir
 
         # Build the datasets.
@@ -308,7 +256,8 @@ class MMDetection(LabelStudioMLBase):
 
         # Create work_dir.
         mmcv.mkdir_or_exist(os.path.abspath(self.cfg.work_dir))
-        train_detector(model, datasets, self.cfg, distributed=False, validate=False, meta=dict())
+        train_detector(model, datasets, self.cfg,
+                       distributed=False, validate=False, meta=dict())
         train_output = {
             'checkpoint_file': os.path.join(self.cfg.work_dir, 'latest.pth'),
             'config_file': os.path.join(self.cfg.work_dir, os.path.basename(self.config_file))

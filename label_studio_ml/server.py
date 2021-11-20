@@ -21,11 +21,13 @@ def get_args():
         help='Projects root directory')
 
     parser = argparse.ArgumentParser(description='Label studio')
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    subparsers = parser.add_subparsers(
+        dest='command', help='Available commands')
     subparsers.required = True
 
     # init sub-command parser
-    parser_init = subparsers.add_parser('init', help='Initialize Label Studio', parents=[root_parser])
+    parser_init = subparsers.add_parser(
+        'init', help='Initialize Label Studio', parents=[root_parser])
     parser_init.add_argument(
         'project_name',
         help='Path to directory where project state will be initialized')
@@ -37,7 +39,8 @@ def get_args():
         help='Force recreating the project if exists')
 
     # start sub-command parser
-    parser_start = subparsers.add_parser('start', help='Initialize Label Studio', parents=[root_parser])
+    parser_start = subparsers.add_parser(
+        'start', help='Initialize Label Studio', parents=[root_parser])
     parser_start.add_argument(
         'project_name',
         help='Path to directory where project state will be initialized')
@@ -51,14 +54,18 @@ def create_dir(args):
     if os.path.exists(output_dir) and args.force:
         shutil.rmtree(output_dir)
     elif os.path.exists(output_dir):
-        raise FileExistsError('Model directory already exists. Please remove it or use --force option.')
+        raise FileExistsError(
+            'Model directory already exists. Please remove it or use --force option.')
 
-    default_configs_dir = os.path.join(os.path.dirname(__file__), 'default_configs')
-    shutil.copytree(default_configs_dir, output_dir, ignore=shutil.ignore_patterns('*.tmpl'))
+    default_configs_dir = os.path.join(
+        os.path.dirname(__file__), 'default_configs')
+    shutil.copytree(default_configs_dir, output_dir,
+                    ignore=shutil.ignore_patterns('*.tmpl'))
 
     # extract script name and model class
     if not args.script:
-        logger.warning('You don\'t specify script path: by default, "./model.py" is used')
+        logger.warning(
+            'You don\'t specify script path: by default, "./model.py" is used')
         script_path = 'model.py'
     else:
         script_path = args.script
@@ -70,7 +77,8 @@ def create_dir(args):
     if model_def_in_path(script_path):
         script_path, model_class = args.script.rsplit(':', 1)
     else:
-        model_classes = get_all_classes_inherited_LabelStudioMLBase(script_path)
+        model_classes = get_all_classes_inherited_LabelStudioMLBase(
+            script_path)
         if len(model_classes) > 1:
             raise ValueError(
                 'You don\'t specify target model class, and we\'ve found {num} possible candidates within {script}. '
@@ -103,7 +111,8 @@ def create_dir(args):
         fout.write(wsgi_script)
 
     print(Fore.GREEN + 'Congratulations! ML Backend has been successfully initialized in ' + output_dir)
-    print(Fore.RESET + 'Now start it by using:\n' + Fore.CYAN + 'label-studio-ml start ' + output_dir)
+    print(Fore.RESET + 'Now start it by using:\n' +
+          Fore.CYAN + 'label-studio-ml start ' + output_dir)
 
 
 def start_server(args, subprocess_params):

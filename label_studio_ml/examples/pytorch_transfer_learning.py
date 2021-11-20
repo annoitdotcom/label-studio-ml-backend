@@ -41,7 +41,8 @@ def get_transformed_image(url):
         with open(filepath, mode='rb') as f:
             image = Image.open(f).convert('RGB')
     else:
-        cached_file = os.path.join(image_cache_dir, hashlib.md5(url.encode()).hexdigest())
+        cached_file = os.path.join(
+            image_cache_dir, hashlib.md5(url.encode()).hexdigest())
         if os.path.exists(cached_file):
             with open(cached_file, mode='rb') as f:
                 image = Image.open(f).convert('RGB')
@@ -96,11 +97,14 @@ class ImageClassifier(object):
 
         self.criterion = nn.CrossEntropyLoss()
         if freeze_extractor:
-            self.optimizer = optim.SGD(self.model.fc.parameters(), lr=0.001, momentum=0.9)
+            self.optimizer = optim.SGD(
+                self.model.fc.parameters(), lr=0.001, momentum=0.9)
         else:
-            self.optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
+            self.optimizer = optim.SGD(
+                self.model.parameters(), lr=0.001, momentum=0.9)
 
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=7, gamma=0.1)
+        self.scheduler = optim.lr_scheduler.StepLR(
+            self.optimizer, step_size=7, gamma=0.1)
 
     def save(self, path):
         torch.save(self.model.state_dict(), path)
@@ -110,7 +114,8 @@ class ImageClassifier(object):
         self.model.eval()
 
     def predict(self, image_urls):
-        images = torch.stack([get_transformed_image(url) for url in image_urls])
+        images = torch.stack([get_transformed_image(url)
+                             for url in image_urls])
         with torch.no_grad():
             return self.model(images).data.numpy()
 
@@ -144,12 +149,14 @@ class ImageClassifier(object):
             epoch_loss = running_loss / len(dataloader.dataset)
             epoch_acc = running_corrects.double() / len(dataloader.dataset)
 
-            print('Train Loss: {:.4f} Acc: {:.4f}'.format(epoch_loss, epoch_acc))
+            print('Train Loss: {:.4f} Acc: {:.4f}'.format(
+                epoch_loss, epoch_acc))
 
         print()
 
         time_elapsed = time.time() - since
-        print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+        print('Training complete in {:.0f}m {:.0f}s'.format(
+            time_elapsed // 60, time_elapsed % 60))
 
         return self.model
 
@@ -175,7 +182,8 @@ class ImageClassifierAPI(LabelStudioMLBase):
         image_urls = [task['data'][self.value] for task in tasks]
         logits = self.model.predict(image_urls)
         predicted_label_indices = np.argmax(logits, axis=1)
-        predicted_scores = logits[np.arange(len(predicted_label_indices)), predicted_label_indices]
+        predicted_scores = logits[np.arange(
+            len(predicted_label_indices)), predicted_label_indices]
         predictions = []
         for idx, score in zip(predicted_label_indices, predicted_scores):
             predicted_label = self.classes[idx]

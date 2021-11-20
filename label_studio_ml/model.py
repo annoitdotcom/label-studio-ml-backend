@@ -67,7 +67,8 @@ class LabelStudioMLManager(object):
         **init_kwargs
     ):
         if not issubclass(model_class, LabelStudioMLBase):
-            raise ValueError('Inference class should be the subclass of ' + LabelStudioMLBase.__class__.__name__)
+            raise ValueError(
+                'Inference class should be the subclass of ' + LabelStudioMLBase.__class__.__name__)
 
         cls.model_class = model_class
         cls.redis_queue = redis_queue
@@ -129,8 +130,10 @@ class LabelStudioMLManager(object):
 
     @classmethod
     def _remove_jobs(cls, project):
-        started_registry = StartedJobRegistry(cls._redis_queue.name, cls._redis_queue.connection)
-        finished_registry = FinishedJobRegistry(cls._redis_queue.name, cls._redis_queue.connection)
+        started_registry = StartedJobRegistry(
+            cls._redis_queue.name, cls._redis_queue.connection)
+        finished_registry = FinishedJobRegistry(
+            cls._redis_queue.name, cls._redis_queue.connection)
         for job_id in started_registry.get_job_ids() + finished_registry.get_job_ids():
             job = Job.fetch(job_id, connection=cls._redis)
             if job.meta.get('project') != project:
@@ -161,9 +164,11 @@ class LabelStudioMLManager(object):
 
         # sort directories by decreasing timestamps
         for subdir in reversed(sorted(map(int, filter(lambda d: d.isdigit(), os.listdir(project_model_dir))))):
-            job_result_file = os.path.join(project_model_dir, str(subdir), 'job_result.json')
+            job_result_file = os.path.join(
+                project_model_dir, str(subdir), 'job_result.json')
             if not os.path.exists(job_result_file):
-                logger.error('The latest job result file ' + job_result_file + ' doesn\'t exist')
+                logger.error('The latest job result file ' +
+                             job_result_file + ' doesn\'t exist')
                 continue
             with open(job_result_file) as f:
                 return json.load(f)
@@ -188,7 +193,8 @@ class LabelStudioMLManager(object):
         logger.debug('Create project ' + str(key))
         kwargs.update(cls.init_kwargs)
         cls._current_model[key] = ModelWrapper(
-            model=cls.model_class(label_config=label_config, train_output=train_output, **kwargs),
+            model=cls.model_class(label_config=label_config,
+                                  train_output=train_output, **kwargs),
             model_version=version or cls._generate_version()
         )
         return cls._current_model[key]
@@ -243,10 +249,14 @@ class LabelStudioMLManager(object):
                 'model_version': m.model_version
             }
         else:
-            started_jobs = StartedJobRegistry(cls._redis_queue.name, cls._redis_queue.connection).get_job_ids()
-            finished_jobs = FinishedJobRegistry(cls._redis_queue.name, cls._redis_queue.connection).get_job_ids()
-            failed_jobs = FailedJobRegistry(cls._redis_queue.name, cls._redis_queue.connection).get_job_ids()
-            running_jobs = list(set(started_jobs) - set(finished_jobs + failed_jobs))
+            started_jobs = StartedJobRegistry(
+                cls._redis_queue.name, cls._redis_queue.connection).get_job_ids()
+            finished_jobs = FinishedJobRegistry(
+                cls._redis_queue.name, cls._redis_queue.connection).get_job_ids()
+            failed_jobs = FailedJobRegistry(
+                cls._redis_queue.name, cls._redis_queue.connection).get_job_ids()
+            running_jobs = list(set(started_jobs) -
+                                set(finished_jobs + failed_jobs))
             logger.debug('Running jobs: ' + str(running_jobs))
             for job_id in running_jobs:
                 job = Job.fetch(job_id, connection=cls._redis)
@@ -272,7 +282,8 @@ class LabelStudioMLManager(object):
         else:
             m = cls.get(project)
             if not m:
-                raise FileNotFoundError('No model loaded. Specify "try_fetch=True" option.')
+                raise FileNotFoundError(
+                    'No model loaded. Specify "try_fetch=True" option.')
 
         predictions = m.model.predict(tasks, **kwargs)
         return predictions, m
@@ -317,7 +328,8 @@ class LabelStudioMLManager(object):
         if cls.without_redis():
             data_stream = tasks
         else:
-            data_stream = (json.loads(t) for t in cls._redis.lrange(cls._get_tasks_key(project), 0, -1))
+            data_stream = (json.loads(t) for t in cls._redis.lrange(
+                cls._get_tasks_key(project), 0, -1))
 
         if workdir:
             data_stream, snapshot = tee(data_stream)
@@ -354,14 +366,16 @@ class LabelStudioMLManager(object):
     def _start_training_job(cls, project, label_config, train_kwargs):
         job = cls._redis_queue.enqueue(
             cls.train_script_wrapper,
-            args=(project, label_config, train_kwargs, cls.get_initialization_params()),
+            args=(project, label_config, train_kwargs,
+                  cls.get_initialization_params()),
             job_timeout='365d',
             ttl=None,
             result_ttl=-1,
             failure_ttl=300,
             meta={'project': project},
         )
-        logger.info('Training job {job} started for project {project}'.format(job=job, project=project))
+        logger.info('Training job {job} started for project {project}'.format(
+            job=job, project=project))
         return job
 
     @classmethod
@@ -371,7 +385,8 @@ class LabelStudioMLManager(object):
             job_result = cls.train_script_wrapper(
                 project, label_config, train_kwargs=kwargs, tasks=tasks)
             train_output = json.loads(job_result)['train_output']
-            cls.get_or_create(project, label_config, force_reload=True, train_output=train_output)
+            cls.get_or_create(project, label_config,
+                              force_reload=True, train_output=train_output)
         else:
             tasks_key = cls._get_tasks_key(project)
             cls._redis.delete(tasks_key)
