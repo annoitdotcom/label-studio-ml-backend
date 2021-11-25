@@ -1,11 +1,14 @@
 {
     "submodule_mmocr": {
+        "sha1_hash": "809661ea2803b907a79968d054bddf0bb3f76262",
         "url": "https://github.com/open-mmlab/mmocr.git"
     },
     "submodule_mmdetection": {
+        "sha1_hash": "9e3fd33ce7f64bf3dd3f5b2f523dcad9218ba299",
         "url": "https://github.com/open-mmlab/mmdetection"
     },
     "submodule_mmsegmentation": {
+        "sha1_hash": "2bd7f60785790f5bf85e7b2ec52fadf722101fc0",
         "url": "https://github.com/open-mmlab/mmsegmentation.git"
     }
 }

@@ -1,6 +1,8 @@
+import json
 import logging
 import os
 import os.path as osp
+import tempfile
 from urllib.parse import urlparse
 
 import boto3
@@ -9,7 +11,7 @@ import numpy as np
 from botocore.exceptions import ClientError
 from label_studio.core.settings.base import DATA_UNDEFINED_NAME
 from label_studio.core.utils.io import get_data_dir, json_load
-from mmcv import Config
+from mmcv import Config, image
 from mmdet.apis import (inference_detector, init_detector, set_random_seed,
                         train_detector)
 from mmdet.datasets import build_dataset
@@ -18,58 +20,47 @@ from mmdet.datasets.custom import CustomDataset
 from mmdet.models import build_detector
 
 from label_studio_ml.model import LabelStudioMLBase
-from label_studio_ml.utils import (get_choice, get_image_local_path,
-                                   get_image_size, get_single_tag_keys,
-                                   is_skipped)
+from label_studio_ml.utils import (get_image_local_path, get_image_size,
+                                   get_object_annotations, get_object_classes,
+                                   get_single_tag_keys, is_skipped)
 
 logger = logging.getLogger(__name__)
 
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+
+
 @DATASETS.register_module()
 class DetectionDataset(CustomDataset):
-    def load_annotations(self, ann_file, label_dir: str = None, img_suffix=".jpg"):
-        cat2label = {k: i for i, k in enumerate(self.CLASSES)}
-        # Load image list from file.
-        image_list = mmcv.list_from_file(ann_file)
-        data_infos = []
+    def load_annotations(self, ann_file):
+        with open(ann_file, encoding='utf-8-sig') as fp:
+            anns = json.load(fp)
+
         # Convert annotations to middle format.
-        for image_id in image_list:
-            filename = f'{self.img_prefix}/{image_id}{img_suffix}'
+        data_infos = []
+        cat2label = {k: i for i, k in enumerate(self.CLASSES)}
+        for item in anns:
+            filename = f'{self.img_prefix}/{item["filename"]}'
             image = mmcv.imread(filename)
             height, width = image.shape[:2]
             data_info = dict(
-                filename=f'{image_id}{img_suffix}', width=width, height=height)
-
-            # Load annotations
-            lines = mmcv.list_from_file(osp.join(label_dir, f'{image_id}.txt'))
-            content = [line.strip().split(' ') for line in lines]
-            bbox_names = [x[0] for x in content]
-            bboxes = [[float(info) for info in x[4:8]] for x in content]
-
-            gt_bboxes = []
+                filename=item["filename"], width=width, height=height)
             gt_labels = []
-            gt_bboxes_ignore = []
-            gt_labels_ignore = []
-
-            # filter 'DontCare'
-            for bbox_name, bbox in zip(bbox_names, bboxes):
-                if bbox_name in cat2label:
-                    gt_labels.append(cat2label[bbox_name])
-                    gt_bboxes.append(bbox)
-                else:
-                    gt_labels_ignore.append(-1)
-                    gt_bboxes_ignore.append(bbox)
+            for cls_name in item["ann"]["classes"]:
+                if cls_name in cat2label:
+                    gt_labels.append(cat2label[cls_name])
 
             data_anno = dict(
-                bboxes=np.array(gt_bboxes, dtype=np.float32).reshape(-1, 4),
-                labels=np.array(gt_labels, dtype=np.long),
-                bboxes_ignore=np.array(gt_bboxes_ignore,
-                                       dtype=np.float32).reshape(-1, 4),
-                labels_ignore=np.array(gt_labels_ignore, dtype=np.long))
+                bboxes=np.array(item["ann"]["bboxes"],
+                                dtype=np.float32).reshape(-1, 4),
+                labels=np.array(gt_labels, dtype=np.long),)
 
             data_info.update(ann=data_anno)
             data_infos.append(data_info)
-
         return data_infos
 
 
@@ -85,7 +76,7 @@ class MMDetection(LabelStudioMLBase):
         :param config_file: Absolute path to MMDetection config file (e.g. /home/user/mmdetection/configs/faster_rcnn/faster_rcnn_r50_fpn_1x.py)
         :param checkpoint_file: Absolute path MMDetection checkpoint file (e.g. /home/user/mmdetection/checkpoints/faster_rcnn_r50_fpn_1x_20181010-3d1b3351.pth)
         :param image_dir: Directory where images are stored (should be used only in case you use direct file upload into Label Studio instead of URLs)
-        :param labels_file: file with mappings from COCO labels to custom labels {"airplane": "Boeing"}
+        :param labels_file: file with mappings from COCO labels to custom labels {"airplane": "Boeing"}.
         :param score_threshold: score threshold to wipe out noisy results
         :param device: device (cpu, cuda:0, cuda:1, ...)
         :param kwargs:
@@ -126,15 +117,13 @@ class MMDetection(LabelStudioMLBase):
             self.value) or task['data'].get(DATA_UNDEFINED_NAME)
         if image_url.startswith('s3://'):
             # presign s3 url
-            r = urlparse(image_url, allow_fragments=False)
-            bucket_name = r.netloc
-            key = r.path.lstrip('/')
+            rr = urlparse(image_url, allow_fragments=False)
+            bucket_name = rr.netloc
+            key = rr.path.lstrip('/')
             client = boto3.client('s3')
             try:
-                image_url = client.generate_presigned_url(
-                    ClientMethod='get_object',
-                    Params={'Bucket': bucket_name, 'Key': key}
-                )
+                image_url = client.generate_presigned_url(ClientMethod='get_object',
+                                                          Params={'Bucket': bucket_name, 'Key': key})
             except ClientError as exc:
                 logger.warning(
                     f'Can\'t generate presigned URL for {image_url}. Reason: {exc}')
@@ -151,7 +140,6 @@ class MMDetection(LabelStudioMLBase):
         img_width, img_height = get_image_size(image_path)
         for bboxes, label in zip(model_results, self.model.CLASSES):
             output_label = self.label_map.get(label, label)
-
             if output_label not in self.labels_in_config:
                 print(output_label + ' label not found in project config.')
                 continue
@@ -178,19 +166,16 @@ class MMDetection(LabelStudioMLBase):
                 })
                 all_scores.append(score)
         avg_score = sum(all_scores) / max(len(all_scores), 1)
-        return [{
-            'result': results,
-            'score': avg_score
-        }]
+        return [{"result": results, "score": avg_score}]
 
-    def get_training_cfg(self, ann_file, num_classes):
+    def get_training_cfg(self, num_classes=None):
         cfg = Config.fromfile(self.config_file)
 
         # Modify dataset type and path
         cfg.dataset_type = 'DetectionDataset'
         cfg.data.train.type = 'DetectionDataset'
-        cfg.data.train.ann_file = ann_file
-        cfg.data.train.img_prefix = self.image_dir
+        cfg.data.train.img_prefix = None
+        cfg.data.train.ann_file = None
 
         # modify num classes of the model in box head
         cfg.model.roi_head.bbox_head.num_classes = num_classes
@@ -222,44 +207,50 @@ class MMDetection(LabelStudioMLBase):
         # We can initialize the logger for training and have a look
         # at the final config used for training
         print(f'Config:\n{cfg.pretty_text}')
+        return cfg
 
     def fit(self, completions, workdir=None, **kwargs):
-        annotations = []
+        ann_items = []
         for completion in completions:
             if is_skipped(completion):
                 continue
 
-            image_url = self._get_image_url(completion['data'][self.value])
+            image_url = self._get_image_url(completion)
             image_path = get_image_local_path(
                 image_url, image_dir=self.image_dir)
-            ann_url = get_choice(completion)
-            ann_path = get_image_local_path(ann_url, image_dir=self.ann_dir)
-            annotations.append((image_path, ann_path))
+            anns = get_object_annotations(
+                completion, os.path.basename(image_path))
+            if anns:
+                ann_items.append(anns)
 
         # Create datasets.
-        image_paths, ann_paths = zip(*annotations)
-        CustomDataset.CLASSES = self.labels
+        classes = get_object_classes(ann_items)
+        CustomDataset.CLASSES = classes
 
         # Get training config.
-        # TODO: set ann file here.
-        cfg = self.get_training_cfg(self.labels_file, len(self.labels))
-        cfg.workdir = workdir
+        cfg = self.get_training_cfg(num_classes=len(classes))
+        cfg.work_dir = workdir
+        cfg.data.train.img_prefix = self.image_dir
+        _, anns_path = tempfile.mkstemp()
+        with open(anns_path, "w", encoding="utf-8-sig") as fp:
+            json.dump(ann_items, fp, indent=2,
+                      ensure_ascii=False, cls=NumpyEncoder)
+        cfg.data.train.ann_file = anns_path
 
         # Build the datasets.
         datasets = [build_dataset(cfg.data.train)]
 
         # Build the detector.
-        model = build_detector(self.model, train_cfg=self.cfg.get('train_cfg'))
+        model = build_detector(cfg.model, train_cfg=cfg.get('train_cfg'))
 
         # Add an attribute for visualization convenience.
         model.CLASSES = datasets[0].CLASSES
 
         # Create work_dir.
-        mmcv.mkdir_or_exist(os.path.abspath(self.cfg.work_dir))
-        train_detector(model, datasets, self.cfg,
-                       distributed=False, validate=False, meta=dict())
-        train_output = {
-            'checkpoint_file': os.path.join(self.cfg.work_dir, 'latest.pth'),
-            'config_file': os.path.join(self.cfg.work_dir, os.path.basename(self.config_file))
-        }
+        mmcv.mkdir_or_exist(os.path.abspath(cfg.work_dir))
+        train_detector(model, datasets, cfg, distributed=False,
+                       validate=False, meta=dict())
+        train_output = {"checkpoint_file": os.path.join(cfg.work_dir, "latest.pth"),
+                        "config_file": os.path.join(cfg.work_dir, os.path.basename(self.config_file))}
+        os.remove(anns_path)
         return train_output

@@ -9,6 +9,7 @@ import sys
 import urllib
 from urllib.parse import urlparse
 
+import numpy as np
 import requests
 from colorama import Fore
 from label_studio.core.utils.io import get_cache_dir, get_data_dir
@@ -73,6 +74,31 @@ def is_skipped(completion):
 
 def get_choice(completion):
     return completion['annotations'][0]['result'][0]['value']['choices'][0]
+
+
+def get_object_annotations(completion, filename):
+    anns = {}
+    items = completion['annotations'][0]['result']
+    if items:
+        bboxes = []
+        classes = []
+        anns["filename"] = filename
+        anns["width"] = items[0]["original_width"]
+        anns["height"] = items[0]["original_height"]
+        for item in items:
+            bboxes.append([
+                item["value"]["x"],
+                item["value"]["y"],
+                item["value"]["x"] + item["value"]["width"],
+                item["value"]["y"] + item["value"]["height"]
+            ])
+            classes.extend(item["value"]["rectanglelabels"])
+        anns["ann"] = {"bboxes": np.array(bboxes), "classes": classes}
+    return anns
+
+
+def get_object_classes(anns):
+    return tuple(set(sum([item["ann"]["classes"] for item in anns], [])))
 
 
 def get_image_local_path(url, image_cache_dir=None, project_dir=None, image_dir=None):
