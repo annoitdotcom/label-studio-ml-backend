@@ -110,8 +110,7 @@ def get_local_path(url, cache_dir=None, project_dir=None, hostname=None, image_d
     is_uploaded_file = url.startswith('/data/upload')
     if image_dir is None:
         upload_dir = os.path.join(get_data_dir(), 'media', 'upload')
-        image_dir = project_dir and os.path.join(
-            project_dir, 'upload') or upload_dir
+        image_dir = project_dir and os.path.join(project_dir, 'upload') or upload_dir
 
     # File reference created with --allow-serving-local-files option
     if is_local_file:
@@ -124,21 +123,20 @@ def get_local_path(url, cache_dir=None, project_dir=None, hostname=None, image_d
 
     # File uploaded via import UI
     elif is_uploaded_file and os.path.exists(image_dir):
+        project_id = url.split("/")[-2] # To retrieve project_id
+        image_dir = os.path.join(image_dir, project_id)
         filepath = os.path.join(image_dir, os.path.basename(url))
         return filepath
 
     elif is_uploaded_file and hostname:
         url = hostname + url
-        logger.info(
-            'Resolving url using hostname [' + hostname + '] from LSB: ' + url)
+        logger.info('Resolving url using hostname [' + hostname + '] from LSB: ' + url)
 
     elif is_uploaded_file:
-        raise FileNotFoundError(
-            "Can't resolve url, neither hostname or project_dir passed: " + url)
+        raise FileNotFoundError("Can't resolve url, neither hostname or project_dir passed: " + url)
 
     if is_uploaded_file and not access_token:
-        raise FileNotFoundError(
-            "Can't access file, no access_token provided for Label Studio Backend")
+        raise FileNotFoundError("Can't access file, no access_token provided for Label Studio Backend")
 
     # File specified by remote URL - download and cache it
     cache_dir = cache_dir or get_cache_dir()
@@ -147,14 +145,12 @@ def get_local_path(url, cache_dir=None, project_dir=None, hostname=None, image_d
     url_hash = hashlib.md5(url.encode()).hexdigest()[:6]
     filepath = os.path.join(cache_dir, url_hash + '__' + url_filename)
     if not os.path.exists(filepath):
-        logger.info('Download {url} to {filepath}'.format(
-            url=url, filepath=filepath))
-        headers = {'Authorization': 'Token ' +
-                   access_token} if access_token else {}
-        r = requests.get(url, stream=True, headers=headers)
-        r.raise_for_status()
+        logger.info('Download {url} to {filepath}'.format(url=url, filepath=filepath))
+        headers = {'Authorization': 'Token ' + access_token} if access_token else {}
+        rr = requests.get(url, stream=True, headers=headers)
+        rr.raise_for_status()
         with io.open(filepath, mode='wb') as fout:
-            fout.write(r.content)
+            fout.write(rr.content)
     return filepath
 
 
