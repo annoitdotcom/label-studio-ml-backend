@@ -1,4 +1,4 @@
 [core]
-    remote = storage
-['remote "storage"']
+    remote = annoit
+['remote "annoit"']
     url = s3://annoit-ml-models

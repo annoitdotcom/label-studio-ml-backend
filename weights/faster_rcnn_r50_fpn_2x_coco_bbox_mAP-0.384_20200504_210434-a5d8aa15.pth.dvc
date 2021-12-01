@@ -1,0 +1,4 @@
+outs:
+- md5: 077594a7ae4ed6f6841a71d2bd5ac63c
+  size: 167290877
+  path: faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth
