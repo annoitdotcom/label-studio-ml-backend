@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import os.path as osp
 import tempfile
 from urllib.parse import urlparse
 
@@ -11,7 +10,7 @@ import numpy as np
 from botocore.exceptions import ClientError
 from label_studio.core.settings.base import DATA_UNDEFINED_NAME
 from label_studio.core.utils.io import get_data_dir, json_load
-from mmcv import Config, image
+from mmcv import Config
 from mmdet.apis import (inference_detector, init_detector, set_random_seed,
                         train_detector)
 from mmdet.datasets import build_dataset
@@ -37,14 +36,14 @@ class NumpyEncoder(json.JSONEncoder):
 @DATASETS.register_module()
 class DetectionDataset(CustomDataset):
     def load_annotations(self, ann_file):
-        with open(ann_file, encoding='utf-8-sig') as fp:
+        with open(ann_file, encoding="utf-8-sig") as fp:
             anns = json.load(fp)
 
         # Convert annotations to middle format.
         data_infos = []
         cat2label = {k: i for i, k in enumerate(self.CLASSES)}
         for item in anns:
-            filename = f'{self.img_prefix}/{item["filename"]}'
+            filename = f"{self.img_prefix}/{item['filename']}"
             image = mmcv.imread(filename)
             height, width = image.shape[:2]
             data_info = dict(
@@ -67,7 +66,7 @@ class DetectionDataset(CustomDataset):
 class MMDetection(LabelStudioMLBase):
     """Object detector based on https://github.com/open-mmlab/mmdetection"""
 
-    def __init__(self, config_file, checkpoint_file, image_dir=None, labels_file=None, score_threshold=0.3, device='cpu', **kwargs):
+    def __init__(self, config_file, checkpoint_file, image_dir=None, labels_file=None, score_threshold=0.3, device="cpu", **kwargs):
         """
         Load MMDetection model from config and checkpoint into memory.
         (Check https://mmdetection.readthedocs.io/en/v1.2.0/GETTING_STARTED.html#high-level-apis-for-testing-images)
@@ -82,51 +81,51 @@ class MMDetection(LabelStudioMLBase):
         :param kwargs:
         """
         super(MMDetection, self).__init__(**kwargs)
-
+        self.device = device
         self.config_file = config_file
         self.checkpoint_file = checkpoint_file
         self.labels_file = labels_file
-        # default Label Studio image upload folder
-        upload_dir = os.path.join(get_data_dir(), 'media', 'upload')
+
+        # Default Label Studio image upload folder
+        upload_dir = os.path.join(get_data_dir(), "media", "upload")
         self.image_dir = image_dir or upload_dir
         logger.debug(
-            f'{self.__class__.__name__} reads images from {self.image_dir}')
+            f"{self.__class__.__name__} reads images from {self.image_dir}")
         if self.labels_file and os.path.exists(self.labels_file):
             self.label_map = json_load(self.labels_file)
         else:
             self.label_map = {}
 
         self.from_name, self.to_name, self.value, self.labels_in_config = get_single_tag_keys(
-            self.parsed_label_config, 'RectangleLabels', 'Image')
+            self.parsed_label_config, "RectangleLabels", "Image")
         schema = list(self.parsed_label_config.values())[0]
         self.labels_in_config = set(self.labels_in_config)
 
         # Collect label maps from `predicted_values="airplane,car"` attribute in <Label> tag
-        self.labels_attrs = schema.get('labels_attrs')
+        self.labels_attrs = schema.get("labels_attrs")
         if self.labels_attrs:
             for label_name, label_attrs in self.labels_attrs.items():
-                for predicted_value in label_attrs.get('predicted_values', '').split(','):
+                for predicted_value in label_attrs.get("predicted_values", "").split(","):
                     self.label_map[predicted_value] = label_name
 
-        print('Load new model from: ', config_file, checkpoint_file)
+        logger.debug("Load new model from: ", config_file, checkpoint_file)
         self.model = init_detector(config_file, checkpoint_file, device=device)
         self.score_thresh = score_threshold
 
     def _get_image_url(self, task):
-        image_url = task['data'].get(
-            self.value) or task['data'].get(DATA_UNDEFINED_NAME)
-        if image_url.startswith('s3://'):
-            # presign s3 url
+        """Get image url from api."""
+        image_url = task["data"].get(self.value) or task["data"].get(DATA_UNDEFINED_NAME)
+        if image_url.startswith("s3://"):
             rr = urlparse(image_url, allow_fragments=False)
             bucket_name = rr.netloc
-            key = rr.path.lstrip('/')
-            client = boto3.client('s3')
+            key = rr.path.lstrip("/")
+            client = boto3.client("s3")
             try:
-                image_url = client.generate_presigned_url(ClientMethod='get_object',
-                                                          Params={'Bucket': bucket_name, 'Key': key})
+                image_url = client.generate_presigned_url(ClientMethod="get_object",
+                                                          Params={"Bucket": bucket_name, "Key": key})
             except ClientError as exc:
                 logger.warning(
-                    f'Can\'t generate presigned URL for {image_url}. Reason: {exc}')
+                    f"Can\"t generate presigned URL for {image_url}. Reason: {exc}")
         return image_url
 
     def predict(self, tasks, **kwargs):
@@ -135,13 +134,14 @@ class MMDetection(LabelStudioMLBase):
         image_url = self._get_image_url(task)
         image_path = get_image_local_path(image_url, image_dir=self.image_dir)
         model_results = inference_detector(self.model, image_path)
+
         results = []
         all_scores = []
         img_width, img_height = get_image_size(image_path)
         for bboxes, label in zip(model_results, self.model.CLASSES):
             output_label = self.label_map.get(label, label)
             if output_label not in self.labels_in_config:
-                print(output_label + ' label not found in project config.')
+                logger.debug(output_label + " label not found in project config.")
                 continue
             for bbox in bboxes:
                 bbox = list(bbox)
@@ -152,28 +152,29 @@ class MMDetection(LabelStudioMLBase):
                     continue
                 x, y, xmax, ymax = bbox[:4]
                 results.append({
-                    'from_name': self.from_name,
-                    'to_name': self.to_name,
-                    'type': 'rectanglelabels',
-                    'value': {
-                        'rectanglelabels': [output_label],
-                        'x': x / img_width * 100,
-                        'y': y / img_height * 100,
-                        'width': (xmax - x) / img_width * 100,
-                        'height': (ymax - y) / img_height * 100
+                    "from_name": self.from_name,
+                    "to_name": self.to_name,
+                    "type": "rectanglelabels",
+                    "value": {
+                        "rectanglelabels": [output_label],
+                        "x": x / img_width * 100,
+                        "y": y / img_height * 100,
+                        "width": (xmax - x) / img_width * 100,
+                        "height": (ymax - y) / img_height * 100
                     },
-                    'score': score
+                    "score": score
                 })
                 all_scores.append(score)
         avg_score = sum(all_scores) / max(len(all_scores), 1)
+        import pdb; pdb.set_trace()
         return [{"result": results, "score": avg_score}]
 
     def get_training_cfg(self, num_classes=None):
         cfg = Config.fromfile(self.config_file)
 
         # Modify dataset type and path
-        cfg.dataset_type = 'DetectionDataset'
-        cfg.data.train.type = 'DetectionDataset'
+        cfg.dataset_type = "DetectionDataset"
+        cfg.data.train.type = "DetectionDataset"
         cfg.data.train.img_prefix = None
         cfg.data.train.ann_file = None
 
@@ -193,7 +194,7 @@ class MMDetection(LabelStudioMLBase):
         cfg.log_config.interval = 10
 
         # Change the evaluation metric since we use customized dataset.
-        cfg.evaluation.metric = 'mAP'
+        cfg.evaluation.metric = "mAP"
         # We can set the evaluation interval to reduce the evaluation times
         cfg.evaluation.interval = 12
         # We can set the checkpoint saving interval to reduce the storage cost
@@ -206,7 +207,7 @@ class MMDetection(LabelStudioMLBase):
 
         # We can initialize the logger for training and have a look
         # at the final config used for training
-        print(f'Config:\n{cfg.pretty_text}')
+        logger.debug(f"Config:\n{cfg.pretty_text}")
         return cfg
 
     def fit(self, completions, workdir=None, **kwargs):
@@ -222,6 +223,9 @@ class MMDetection(LabelStudioMLBase):
                 completion, os.path.basename(image_path))
             if anns:
                 ann_items.append(anns)
+
+        if not ann_items:
+            return {}
 
         # Create datasets.
         classes = get_object_classes(ann_items)
@@ -241,13 +245,14 @@ class MMDetection(LabelStudioMLBase):
         datasets = [build_dataset(cfg.data.train)]
 
         # Build the detector.
-        model = build_detector(cfg.model, train_cfg=cfg.get('train_cfg'))
+        model = build_detector(cfg.model, train_cfg=cfg.get("train_cfg"))
 
         # Add an attribute for visualization convenience.
-        model.CLASSES = datasets[0].CLASSES
+        model.CLASSES = list(set([ds.CLASSES for ds in datasets]))
 
         # Create work_dir.
         mmcv.mkdir_or_exist(os.path.abspath(cfg.work_dir))
+        cfg.gpu_ids = [] if self.device == "cpu" else cfg.gpu_ids
         train_detector(model, datasets, cfg, distributed=False,
                        validate=False, meta=dict())
         train_output = {"checkpoint_file": os.path.join(cfg.work_dir, "latest.pth"),

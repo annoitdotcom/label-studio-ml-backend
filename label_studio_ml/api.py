@@ -1,4 +1,5 @@
 import logging
+import os
 
 from flask import Flask, jsonify, request, send_file
 from rq.exceptions import NoSuchJobError
@@ -52,6 +53,7 @@ def _setup():
     model = _manager.fetch(project, schema, force_reload,
                            hostname=hostname, access_token=access_token)
     logger.debug('Fetch model version: {}'.format(model.model_version))
+    os.environ['ACCESS_TOKEN'] = access_token
     return jsonify({'model_version': model.model_version})
 
 

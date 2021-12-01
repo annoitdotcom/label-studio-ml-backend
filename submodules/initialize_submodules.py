@@ -21,8 +21,6 @@ def init_submodules():
         url, sha = value["url"], value["sha1_hash"]
         print(f"Adding submodule {name} from {url}")
         submodule_path = top_dir / name
-
-        print(output)
         print(f"Resetting submodule name to commit {sha}")
         try:
             output = subprocess.check_output(f"git reset --hard {sha}",
