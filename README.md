@@ -31,8 +31,12 @@ label-studio-ml start my_ml_backend --with det_config=./mmocr/configs/textdet/db
 
 ## MMDETECTION
 ```
-conda create -n open-mmlab python=3.7 -y
+conda create --name open-mmlab python==3.7
 conda activate open-mmlab
+pip3 install torch==1.7.1+cu110 -f https://download.pytorch.org/whl/torch_stable.html
+pip3 install torchvision==0.8.2+cu110 -f https://download.pytorch.org/whl/torch_stable.html
+pip3 install mmcv-full==1.3.1 -f https://download.openmmlab.com/mmcv/dist/cu110/torch1.7.0/index.html
+pip3 install mmdet==2.11.0
 
 # install latest pytorch prebuilt with the default prebuilt CUDA version (usually the latest)
 conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=11.0 -c pytorch

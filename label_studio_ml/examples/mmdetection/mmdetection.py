@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import boto3
 import mmcv
 import numpy as np
+from typing import List, Dict, Any
 from botocore.exceptions import ClientError
 from label_studio.core.settings.base import DATA_UNDEFINED_NAME
 from label_studio.core.utils.io import get_data_dir, json_load
@@ -129,8 +130,13 @@ class MMDetection(LabelStudioMLBase):
         return image_url
 
     def predict(self, tasks, **kwargs):
-        assert len(tasks) == 1
-        task = tasks[0]
+        outputs: List[Dict[str, Any]] = []
+        for task in tasks:
+            results = self.single_predict(task)
+            outputs.append(results)
+        return outputs
+    
+    def single_predict(self, task, **kwargs):
         image_url = self._get_image_url(task)
         image_path = get_image_local_path(image_url, image_dir=self.image_dir)
         model_results = inference_detector(self.model, image_path)
@@ -166,8 +172,8 @@ class MMDetection(LabelStudioMLBase):
                 })
                 all_scores.append(score)
         avg_score = sum(all_scores) / max(len(all_scores), 1)
-        import pdb; pdb.set_trace()
-        return [{"result": results, "score": avg_score}]
+        return {"result": results, "score": avg_score}
+
 
     def get_training_cfg(self, num_classes=None):
         cfg = Config.fromfile(self.config_file)

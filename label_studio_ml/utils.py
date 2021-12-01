@@ -25,16 +25,16 @@ os.makedirs(image_cache_dir, exist_ok=True)
 
 
 def get_all_classes_inherited_LabelStudioMLBase(script_file):
-    names = []
+    names = set()
     abs_path = os.path.abspath(script_file)
     module_name = os.path.splitext(os.path.basename(script_file))[0]
     sys.path.append(os.path.dirname(abs_path))
     try:
         module = importlib.import_module(module_name)
     except ModuleNotFoundError as e:
-        print(Fore.RED + "Can\"t import module "" + module_name + f"", reason: {e}.\n"
-              "If you are looking for examples, you can find a dummy model.py here:\n" +
-              Fore.LIGHTYELLOW_EX + "https://labelstud.io/tutorials/dummy_model.html")
+        print(Fore.RED + 'Can\'t import module "' + module_name + f'", reason: {e}.\n'
+              'If you are looking for examples, you can find a dummy model.py here:\n' +
+              Fore.LIGHTYELLOW_EX + 'https://labelstud.io/tutorials/dummy_model.html')
         module = None
         exit(-1)
 
@@ -42,8 +42,12 @@ def get_all_classes_inherited_LabelStudioMLBase(script_file):
         if name == LabelStudioMLBase.__name__:
             continue
         if issubclass(obj, LabelStudioMLBase):
-            names.append(name)
+            names.add(name)
+        for base in obj.__bases__:
+            if LabelStudioMLBase.__name__ == base.__name__:
+                names.add(name)
     sys.path.pop()
+    names = list(names)
     return names
 
 
