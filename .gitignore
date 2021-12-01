@@ -132,3 +132,4 @@ my_ml_backend
 coco-detector
 mmseg_backend/
 assets/images
+/weights
