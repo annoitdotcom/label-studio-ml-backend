@@ -1,21 +1,19 @@
 import logging
 import os
+from typing import Any, Dict, List
 from urllib.parse import urlparse
 
 import boto3
 import mmcv
 from botocore.exceptions import ClientError
 from label_studio.core.settings.base import DATA_UNDEFINED_NAME
-from label_studio.core.utils.io import get_data_dir, json_load
-from mmdet.apis import inference_detector, init_detector
-from mmocr.apis.inference import model_inference
-from mmocr.core.visualize import det_recog_show_result
-from mmocr.datasets.pipelines.crop import crop_img
-from mmocr.utils.box_util import stitch_boxes_into_lines
+from label_studio.core.utils.io import get_data_dir
 
 from label_studio_ml.model import LabelStudioMLBase
-from label_studio_ml.utils import (get_image_local_path, get_image_size,
-                                   get_single_tag_keys)
+from label_studio_ml.utils import get_image_local_path, get_image_size
+from submodule_mmdetection.mmdet.apis import init_detector
+from submodule_mmocr.mmocr.apis.inference import model_inference
+from submodule_mmocr.mmocr.datasets.pipelines.crop import crop_img
 
 logger = logging.getLogger(__name__)
 
@@ -141,8 +139,13 @@ class MMOCR(LabelStudioMLBase):
         return image_url
 
     def predict(self, tasks, **kwargs):
-        assert len(tasks) == 1
-        task = tasks[0]
+        outputs: List[Dict[str, Any]] = []
+        for task in tasks:
+            resutls = self.single_predict(task, **kwargs)
+            outputs.append(resutls)
+        return outputs
+
+    def single_predict(self, task, **kwargs):
         image_url = self._get_image_url(task)
         image_path = get_image_local_path(image_url, image_dir=self.image_dir)
         model_results = det_and_recog_inference(image_path, batch_mode=True, batch_size=8,
@@ -153,11 +156,8 @@ class MMOCR(LabelStudioMLBase):
             cell_id = image_url.split("/")[-1] + f"_{i}"
             bbox = item["box"]
             text = item["text"]
-
             bbox = list(bbox)
-
-            x, y, xmax, ymax = min(bbox[::2]), min(
-                bbox[1::2]), max(bbox[::2]), max(bbox[1::2])
+            x, y, xmax, ymax = min(bbox[::2]), min(bbox[1::2]), max(bbox[::2]), max(bbox[1::2])
             results += [
                 {
                     "id": cell_id,
@@ -198,20 +198,4 @@ class MMOCR(LabelStudioMLBase):
                     "original_height": 459
                 }
             ]
-        # import pdb; pdb.set_trace()
-        print(
-            [{
-                "result": results,
-                "score": 0
-            }]
-        )
-        predictions = [{"result": results, "score": 0}]
-        return predictions
-
-
-if __name__ == "__main__":
-    mmocr = MMOCR(image_dir="/home/lionel/data_labeling_website/data/media/upload",
-                  det_config="/home/lionel/mmocr/configs/textdet/dbnet/dbnet_r18_fpnc_1200e_icdar2015.py",
-                  det_ckpt="/home/lionel/label-studio-ml-backend/label_studio_ml/examples/ocr_utils/dbnet_r18_fpnc_sbn_1200e_icdar2015_20210329-ba3ab597.pth",
-                  recog_config="/home/lionel/mmocr/configs/textrecog/tps/crnn_tps_academic_dataset.py",
-                  recog_ckpt="/home/lionel/label-studio-ml-backend/label_studio_ml/examples/ocr_utils/crnn_tps_academic_dataset_20210510-d221a905.pth")
+        return {"result": results, "score": 0}
