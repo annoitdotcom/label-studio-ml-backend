@@ -8,12 +8,12 @@ import mmcv
 from botocore.exceptions import ClientError
 from label_studio.core.settings.base import DATA_UNDEFINED_NAME
 from label_studio.core.utils.io import get_data_dir
+from mmocr.apis.inference import model_inference
+from mmocr.datasets.pipelines.crop import crop_img
 
 from label_studio_ml.model import LabelStudioMLBase
 from label_studio_ml.utils import get_image_local_path, get_image_size
 from submodule_mmdetection.mmdet.apis import init_detector
-from submodule_mmocr.mmocr.apis.inference import model_inference
-from submodule_mmocr.mmocr.datasets.pipelines.crop import crop_img
 
 logger = logging.getLogger(__name__)
 

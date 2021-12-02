@@ -12,18 +12,17 @@ from botocore.exceptions import ClientError
 from label_studio.core.settings.base import DATA_UNDEFINED_NAME
 from label_studio.core.utils.io import get_data_dir, json_load
 from mmcv import Config
+from mmdet.apis import (inference_detector, init_detector, set_random_seed,
+                        train_detector)
+from mmdet.datasets import build_dataset
+from mmdet.datasets.builder import DATASETS
+from mmdet.datasets.custom import CustomDataset
+from mmdet.models import build_detector
 
 from label_studio_ml.model import LabelStudioMLBase
 from label_studio_ml.utils import (get_image_local_path, get_image_size,
                                    get_object_annotations, get_object_classes,
                                    get_single_tag_keys, is_skipped)
-from submodule_mmdetection.mmdet.apis import (inference_detector,
-                                              init_detector, set_random_seed,
-                                              train_detector)
-from submodule_mmdetection.mmdet.datasets import build_dataset
-from submodule_mmdetection.mmdet.datasets.builder import DATASETS
-from submodule_mmdetection.mmdet.datasets.custom import CustomDataset
-from submodule_mmdetection.mmdet.models import build_detector
 
 logger = logging.getLogger(__name__)
 
