@@ -273,7 +273,7 @@ class GoogleOCR(LabelStudioMLBase):
             results += [
                 {
                     "id": cell_id,
-                    "type": "rectanglelabels",
+                    "type": "polygonlabels",
                     "value": {
                         "points": [[p[0] / img_width * 100, p[1] / img_height * 100] for p in polygons],
                         "polygonlabels": [
