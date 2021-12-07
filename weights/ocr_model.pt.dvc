@@ -1,0 +1,4 @@
+outs:
+- md5: 8425a5a1363e57ceda3b5ab3e93032ba
+  size: 19991036
+  path: ocr_model.pt

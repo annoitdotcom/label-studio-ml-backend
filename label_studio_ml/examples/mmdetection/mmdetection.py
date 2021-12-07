@@ -115,7 +115,8 @@ class MMDetection(LabelStudioMLBase):
 
     def _get_image_url(self, task):
         """Get image url from api."""
-        image_url = task["data"].get(self.value) or task["data"].get(DATA_UNDEFINED_NAME)
+        image_url = task["data"].get(
+            self.value) or task["data"].get(DATA_UNDEFINED_NAME)
         if image_url.startswith("s3://"):
             rr = urlparse(image_url, allow_fragments=False)
             bucket_name = rr.netloc
@@ -135,7 +136,7 @@ class MMDetection(LabelStudioMLBase):
             results = self.single_predict(task)
             outputs.append(results)
         return outputs
-    
+
     def single_predict(self, task, **kwargs):
         image_url = self._get_image_url(task)
         image_path = get_image_local_path(image_url, image_dir=self.image_dir)
@@ -147,7 +148,8 @@ class MMDetection(LabelStudioMLBase):
         for bboxes, label in zip(model_results, self.model.CLASSES):
             output_label = self.label_map.get(label, label)
             if output_label not in self.labels_in_config:
-                logger.debug(output_label + " label not found in project config.")
+                logger.debug(output_label +
+                             " label not found in project config.")
                 continue
             for bbox in bboxes:
                 bbox = list(bbox)
@@ -173,7 +175,6 @@ class MMDetection(LabelStudioMLBase):
                 all_scores.append(score)
         avg_score = sum(all_scores) / max(len(all_scores), 1)
         return {"result": results, "score": avg_score}
-
 
     def get_training_cfg(self, num_classes=None):
         cfg = Config.fromfile(self.config_file)

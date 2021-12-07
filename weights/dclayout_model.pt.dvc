@@ -1,0 +1,4 @@
+outs:
+- md5: 3007cc1ecc2644caf426d9885b52cfb0
+  size: 101717935
+  path: dclayout_model.pt

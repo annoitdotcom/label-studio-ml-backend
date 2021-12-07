@@ -1,3 +1,5 @@
 /faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth
 /dbnet_r50dcnv2_fpnc_sbn_1200e_icdar2015_20211025-9fe3b590.pth
 /seg_r31_1by16_fpnocr_academic-72235b11.pth
+/dclayout_model.pt
+/ocr_model.pt
