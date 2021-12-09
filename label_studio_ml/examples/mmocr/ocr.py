@@ -20,63 +20,6 @@ from ocrnet.seq2seq.model import Seq2SeqOCR
 logger = logging.getLogger(__name__)
 
 
-def det_and_recog_inference(image_path, batch_mode, batch_size, det_model, recog_model):
-    end2end_res = {"filename": image_path}
-    end2end_res["result"] = []
-    image = mmcv.imread(image_path)
-    det_result = model_inference(det_model, image)
-    bboxes = det_result["boundary_result"]
-
-    box_imgs = []
-    for bbox in bboxes:
-        box_res = {}
-        box_res["box"] = [round(x) for x in bbox[:-1]]
-        box_res["box_score"] = float(bbox[-1])
-        box = bbox[:8]
-        if len(bbox) > 9:
-            min_x = min(bbox[0:-1:2])
-            min_y = min(bbox[1:-1:2])
-            max_x = max(bbox[0:-1:2])
-            max_y = max(bbox[1:-1:2])
-            box = [min_x, min_y, max_x, min_y, max_x, max_y, min_x, max_y]
-        box_img = crop_img(image, box)
-        if batch_mode:
-            box_imgs.append(box_img)
-        else:
-            recog_result = model_inference(recog_model, box_img)
-            text = recog_result["text"]
-            text_score = recog_result["score"]
-            if isinstance(text_score, list):
-                text_score = sum(text_score) / max(1, len(text))
-            box_res["text"] = text
-            box_res["text_score"] = text_score
-
-        end2end_res["result"].append(box_res)
-
-    if batch_mode:
-        batch_size = batch_size
-        for chunk_idx in range(len(box_imgs) // batch_size + 1):
-            start_idx = chunk_idx * batch_size
-            end_idx = (chunk_idx + 1) * batch_size
-            chunk_box_imgs = box_imgs[start_idx:end_idx]
-            if len(chunk_box_imgs) == 0:
-                continue
-
-            import pdb
-            pdb.set_trace()
-            recog_results = model_inference(
-                recog_model, chunk_box_imgs, batch_mode=True)
-            for i, recog_result in enumerate(recog_results):
-                text = recog_result["text"]
-                text_score = recog_result["score"]
-                if isinstance(text_score, list):
-                    text_score = sum(text_score) / max(1, len(text))
-                end2end_res["result"][start_idx + i]["text"] = text
-                end2end_res["result"][start_idx + i]["text_score"] = text_score
-
-    return end2end_res
-
-
 class AnnoitOCR(LabelStudioMLBase):
     """Object detector based on https://github.com/open-mmlab/mmdetection"""
 
@@ -101,10 +44,8 @@ class AnnoitOCR(LabelStudioMLBase):
             f"{self.__class__.__name__} reads images from {self.image_dir}")
         logger.debug("Load new model")
         self.device = device
-        self.layout_model = DCNet(
-            weights_path=layout_model_path, thresh=0.3, box_thres=0.4, device=self.device)
-        self.ocr_model = Seq2SeqOCR(
-            weights_path=ocr_model_path, batch_size=batch_size, device=self.device)
+        self.layout_model = DCNet(weights_path=layout_model_path, thresh=0.3, box_thres=0.4, device=self.device)
+        self.ocr_model = Seq2SeqOCR(weights_path=ocr_model_path, batch_size=batch_size, device=self.device)
 
     def _get_image_url(self, task):
         image_url = task["data"].get(
