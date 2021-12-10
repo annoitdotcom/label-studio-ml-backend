@@ -5,14 +5,14 @@ from urllib.parse import urlparse
 
 import boto3
 import cv2
-import mmcv
 import numpy as np
 from botocore.exceptions import ClientError
-from deskew_image import cv_deskew_image, fft_deskew_image, rotate_image
 from label_studio.core.settings.base import DATA_UNDEFINED_NAME
 from label_studio.core.utils.io import get_data_dir
 
 from dcnet.model import DCNet
+from dcnet.utils.deskew_image import (cv_deskew_image, fft_deskew_image,
+                                      rotate_image)
 from label_studio_ml.model import LabelStudioMLBase
 from label_studio_ml.utils import get_image_local_path, get_image_size
 from ocrnet.seq2seq.model import Seq2SeqOCR
